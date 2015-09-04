@@ -2,6 +2,7 @@
  
 require_once '../include/DbHandler.php';
 require_once '../include/PassHash.php';
+require_once '../include/TimeHandler.php';
 require '../libs/Slim/Slim.php';
  
 \Slim\Slim::registerAutoloader();
@@ -382,7 +383,7 @@ $app->post('/comments', 'authenticate', function() use($app) {
     });
     
 /**
- * Listing all events of particual user
+ * Listing all comments of particual event
  * method GET
  * params - event_id
  * url /comments       
@@ -433,6 +434,64 @@ $app->post('/comments', 'authenticate', function() use($app) {
      $response["members"] = $result;
      
      echoResponse(200, $response);
+     
+     
+    });
+    
+    
+/**
+ * List free times for given users
+ * method GET
+ * params - members, date_start, date_end, time_start, time_end, duration
+ * url /freetimes   
+ */
+        
+ $app->get('/freetimes', 'authenticate', function() use($app) {
+     verifyRequiredParams(array('members', 'date_start', 'date_end',
+         'time_start', 'time_end', 'duration'));
+     
+     global $user_id;
+     
+     $response = array();
+     $db = new DbHandler();
+     
+     $members = explode(',', $app->request->get('members'));
+     $date_start = $app->request->get('date_start');
+     $date_end = $app->request->get('date_end');
+     $time_start = $app->request->get('time_start');
+     $time_end = $app->request->get('time_end');
+     $duration = $app->request->get('duration');
+     
+
+     if (($key = array_search($user_id, $members)) !== false) {
+       unset($members[$key]);
+     }
+     
+     $response_code = 200;
+     
+    // user doesn't belong to event, not privileged to get comments
+    if (!$db->hasMultiUserPriv($user_id, $members)) {
+        $response["error"] = true;
+        $response["message"] = "Failed to get free times. Insufficient Privileges";
+        $response_code = 403;
+    }
+    else {
+        
+        array_push($members, $user_id);
+        
+        // get events for users in time range
+        $events = $db->getEventsInTimeRange($members, $date_start, 
+                $date_end, $time_start, $time_end);
+        
+        // get common free times
+        $result = get_common_free_time($events, $duration,
+                $date_start, $date_end, $time_start, $time_end);
+
+        $response["error"] = false;
+        $response["free_times"] = $result;
+    }
+     
+     echoResponse($response_code, $response);
      
      
     });
