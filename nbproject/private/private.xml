@@ -5,7 +5,6 @@
         <group>
             <file>file:/C:/xampp/htdocs/eventsched/v1/test.php</file>
             <file>file:/C:/xampp/htdocs/eventsched/include/Config.php</file>
-            <file>file:/C:/xampp/htdocs/eventsched/v1/.htaccess</file>
             <file>file:/C:/xampp/htdocs/eventsched/include/DbHandler.php</file>
             <file>file:/C:/xampp/htdocs/eventsched/include/DbConnect.php</file>
             <file>file:/C:/xampp/htdocs/eventsched/include/PassHash.php</file>

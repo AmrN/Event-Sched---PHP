@@ -24,21 +24,46 @@ $dbHandler = new DbHandler();
 //$res = new DateTime();
 //$res = DateTime::createFromFormat("Y-m-d H:i:s", '1999-02-01 14:43:01');
 $events_readable = array(
-    array("date" => '2015-29-08 01:42:00', "duration" => 30),
-    array("date" => '2015-29-08 03:00:00', "duration" => 30),
-    array("date" => '2015-29-08 03:20:00', "duration" => 30),
-    array("date" => '2015-29-08 03:30:00', "duration" => 30),
-    array("date" => '2015-29-08 05:00:00', "duration" => 30),
-    array("date" => '2015-29-08 05:12:00', "duration" => 30),
+    array("date" => '2015-08-26 01:00:00', "duration" => 30),
+    array("date" => '2015-08-28 01:30:00', "duration" => 30),
+    array("date" => '2015-08-29 03:20:00', "duration" => 30),
+    array("date" => '2015-08-29 03:30:00', "duration" => 60),
+  
 );
 
 $events = generate_events($events_readable);
-$merged = merge_interleaved($events);
 
+
+$date1 = new DateTime();
+$date1->setTimestamp($events[0]["start_time"]);
+
+$date2 = new DateTime();
+$date2->setTimestamp($events[1]["start_time"]);
+
+$res = get_common_free_time($events, 20, '2015-08-20', '2015-08-30', '01:00:00', '04:00:00');
+
+echo $date1->getTimestamp();
 echo "<pre>";
-print_r($events);
+print_r($res);
 echo"</pre>";
-echo "</br></br>";
-echo "<pre>";
-print_r($merged);
-echo"</pre>";
+//
+//echo duration_fits($date1, $date2, 10);
+
+//echo $date1->format("Y-m-d H:i:s");
+//echo "</br>";
+//echo $date2->format("Y-m-d H:i:s");
+//
+//move_to_next_day($date1, $date2);
+//
+//echo"</br></br>";
+//echo $date1->format("Y-m-d H:i:s");
+//echo "</br>";
+//echo $date2->format("Y-m-d H:i:s");
+
+//echo "<pre>";
+//print_r($events);
+//echo"</pre>";
+//echo "</br></br>";
+//echo "<pre>";
+//print_r($merged);
+//echo"</pre>";

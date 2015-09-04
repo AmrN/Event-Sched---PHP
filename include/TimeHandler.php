@@ -8,40 +8,108 @@ function get_common_free_time($events, $duration, $date_first, $date_end,
     
     
     $format = "Y-m-d H:i:s";
-    $initial = DateTime::createFromFormat($format, 
+    $initial_DT = DateTime::createFromFormat($format, 
             $date_first . ' ' . $time_first);
-    $end = DateTime::createFromFormat($format, 
+    $end_DT = DateTime::createFromFormat($format, 
             $date_first . ' ' . $time_end);
+    $final_DT = DateTime::createFromFormat("Y-m-d", $date_end);
     
+    $next_event = array_shift($merged_events);
+    $next_event_DT = new DateTime();
+    if ($next_event != NULL) {
+        $next_event_DT->setTimestamp($next_event["start_time"]);
+    }
+    $left_DT = clone $initial_DT;
+    $right_DT = clone $end_DT;
     
-    $next_event = $merged_events->unshift();
-    while ($next_event != NULL) {
-        if ($next_event["start_time"] > $initial &&
-                $next_event["start_time"] < $end) {
-            if (duration_fits($initial, $next_event, $duration)) {
-                // we found a fit, add time to result array
+    // stop when we reach the end of date filter
+    while ($end_DT < $final_DT) {
+        if ($next_event != NULL) {
+            if ($next_event_DT >= $left_DT &&
+                    $next_event_DT <= $right_DT) {
+                if (duration_fits($left_DT, $next_event_DT, $duration)) {
+                    // we found a fit, add time to result array
+
+                    add_time($left_DT, $next_event_DT, $duration, $result);
+
+
+                }
                 
+                // move $start to next point
+                $left_DT->setTimeStamp($next_event["start_time"]);
+                $interval = new DateInterval("PT{$next_event['duration']}M");
+                $left_DT->add($interval);
                 
-                
-                
+                $next_event = array_shift($merged_events);
+                if ($next_event != NULL) {
+                    $next_event_DT->setTimestamp($next_event["start_time"]);
+                }
             } else {
-                // move $initial to next point
-                $initial = $next_event["start_time"] + $next_event["duration"];
+                if (duration_fits($left_DT, $right_DT, $duration)) {
+                    
+                
+                    add_time($left_DT, $end_DT, $duration, $result);
+                    // we need to move $initial and $end to next period
+                    move_to_next_day($initial_DT, $end_DT);
+
+                    $left_DT = clone $initial_DT;
+                    $right_DT = clone $end_DT;
+                }
+
             }
-            $next_event = $merged_events->unishift();
         } else {
-            // we need to move $initial and $end to next period
+            if (duration_fits($left_DT, $right_DT, $duration)) {
+                add_time($left_DT, $end_DT, $duration, $result);
+  
+            }
             
+            // we need to move $initial and $end to next period
+            move_to_next_day($initial_DT, $end_DT);
+
+            $left_DT = clone $initial_DT;
+            $right_DT = clone $end_DT;
         }
     }
     
+    return $result;
+}
+
+
+function add_time($left_DT, $right_DT, $duration, &$result) {
+    $timestamp_left_mins = $left_DT->getTimeStamp() / 60;
+    $timestamp_right_mins = $right_DT->getTimeStamp() / 60;
     
+    $diff = $timestamp_right_mins - $timestamp_left_mins;
     
+    $times_fit = floor($diff / $duration);
+    array_push($result, array(
+        "start_time" => $left_DT->getTimestamp(),
+        "times_fit" => $times_fit,
+        "start_time_readable" => $left_DT->format("Y-m-d H:i:s")    
+        
+    ));
+}
+
+function move_to_next_day($initial_DT, $end_DT) {
+    $interval = new DateInterval("P1D");
+    $initial_DT->add($interval);
+    $end_DT->add($interval);
+}
+
+function duration_fits($left_DT, $right_DT, $duration) {
+    $timestamp_left_mins = $left_DT->getTimeStamp() / 60;
+    $timestamp_right_mins = $right_DT->getTimeStamp() / 60;
     
+    $diff = $timestamp_right_mins - $timestamp_left_mins;
     
+    if ($diff >= $duration) {
+        return TRUE;
+    }
     
+    return FALSE;
     
 }
+
 
 function merge_interleaved($events) {
     $i = 0;
@@ -64,6 +132,7 @@ function merge_interleaved($events) {
             if ($ev_next_start <= $ev_initial_end) {
                 $ev_new = array();
                 $ev_new["start_time"] = $ev_initial["start_time"];
+                $ev_new["start_time_readable"] = $ev_initial["start_time_readable"];
                 
                 $new_duration = ($ev_next_end > $ev_initial_end) ? 
                         $ev_next_end - $ev_initial_start :
@@ -91,8 +160,11 @@ function generate_events($array) {
         $ev = array();
         $date = DateTime::createFromFormat("Y-m-d H:i:s", $el["date"]);
         $ev["start_time"] = $date->getTimestamp();
+        $ev["start_time_readable"] = $date->format("Y-m-d H:i:s");
         $ev["duration"] = $el["duration"];
+        
         $result[] = $ev;
+        
     }
     return $result;
 }
