@@ -16,7 +16,7 @@ class DbConnect {
      */
     
     function connect() {
-        require_once dirname(__FILE__) . './config.php';
+        require_once dirname(__FILE__) . '/config.php';
         try {
             $con_string = sprintf("mysql:host=%s;dbname=%s",
                     DB_HOST, DB_NAME);
