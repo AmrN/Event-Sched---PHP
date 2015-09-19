@@ -36,7 +36,6 @@ class DbHandler {
      */
     public function createUser($name, $email, $password, $gender) {
         require_once 'PassHash.php';
-        $response = array();
  
         // First check if user already existed in db
         if (!$this->isUserExists($email)) {
@@ -72,7 +71,7 @@ class DbHandler {
             return USER_ALREADY_EXISTED;
         }
  
-        return $response;
+  
     }
  
     /**
@@ -242,7 +241,8 @@ class DbHandler {
         $stmt = $this->conn->prepare('SELECT e.* FROM `events` as `e`
                                       JOIN `user_events` as ue
                                           ON e.id = ue.event_id
-                                      WHERE ue.user_id = :userId');
+                                      WHERE ue.user_id = :userId
+                                      ORDER BY e.start_time DESC');
         $stmt->execute(array("userId" => $userId));
         
         return $this->getArrayFromStmt($stmt);
@@ -253,7 +253,8 @@ class DbHandler {
                                       JOIN `user_events` as ue
                                         ON e.`id` = ue.`event_id`
                                       WHERE  ue.`user_id` = :userId
-                                        AND  ue.`is_delivered` = :is_delivered');
+                                        AND  ue.`is_delivered` = :is_delivered
+                                      ORDER BY e.start_time DESC');
         $stmt->execute(array(
             "userId" => $userId,
             "is_delivered" => $is_delivered ? 1 : 0
@@ -431,7 +432,8 @@ class DbHandler {
         $stmt = $this->conn->prepare('SELECT c.*, u.name AS `author_name`
                                       FROM `comments` AS c 
                                       JOIN `users` AS u ON u.`id` = c.`author_id` 
-                                      WHERE `event_id` = :event_id');
+                                      WHERE `event_id` = :event_id
+                                      ORDER BY c.created_at DESC');
         $stmt->execute(array('event_id' => $eventID));
         
         return $this->getArrayFromStmt($stmt);
@@ -466,101 +468,8 @@ class DbHandler {
     
     
     
-    public function createTask($user_id, $task) {       
-        $stmt = $this->conn->prepare("INSERT INTO tasks(task) VALUES(?)");
-        $stmt->bind_param("s", $task);
-        $result = $stmt->execute();
-        $stmt->close();
+  
  
-        if ($result) {
-            // task row created
-            // now assign the task to user
-            $new_task_id = $this->conn->insert_id;
-            $res = $this->createUserTask($user_id, $new_task_id);
-            if ($res) {
-                // task created successfully
-                return $new_task_id;
-            } else {
-                // task failed to create
-                return NULL;
-            }
-        } else {
-            // task failed to create
-            return NULL;
-        }
-    }
- 
-    /**
-     * Fetching single task
-     * @param String $task_id id of the task
-     */
-    public function getTask($task_id, $user_id) {
-        $stmt = $this->conn->prepare("SELECT t.id, t.task, t.status, t.created_at from tasks t, user_tasks ut WHERE t.id = ? AND ut.task_id = t.id AND ut.user_id = ?");
-        $stmt->bind_param("ii", $task_id, $user_id);
-        if ($stmt->execute()) {
-            $task = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
-            return $task;
-        } else {
-            return NULL;
-        }
-    }
- 
-    /**
-     * Fetching all user tasks
-     * @param String $user_id id of the user
-     */
-    public function getAllUserTasks($user_id) {
-        $stmt = $this->conn->prepare("SELECT t.* FROM tasks t, user_tasks ut WHERE t.id = ut.task_id AND ut.user_id = ?");
-        $stmt->bind_param("i", $user_id);
-        $stmt->execute();
-        $tasks = $stmt->get_result();
-        $stmt->close();
-        return $tasks;
-    }
- 
-    /**
-     * Updating task
-     * @param String $task_id id of the task
-     * @param String $task task text
-     * @param String $status task status
-     */
-    public function updateTask($user_id, $task_id, $task, $status) {
-        $stmt = $this->conn->prepare("UPDATE tasks t, user_tasks ut set t.task = ?, t.status = ? WHERE t.id = ? AND t.id = ut.task_id AND ut.user_id = ?");
-        $stmt->bind_param("siii", $task, $status, $task_id, $user_id);
-        $stmt->execute();
-        $num_affected_rows = $stmt->affected_rows;
-        $stmt->close();
-        return $num_affected_rows > 0;
-    }
- 
-    /**
-     * Deleting a task
-     * @param String $task_id id of the task to delete
-     */
-    public function deleteTask($user_id, $task_id) {
-        $stmt = $this->conn->prepare("DELETE t FROM tasks t, user_tasks ut WHERE t.id = ? AND ut.task_id = t.id AND ut.user_id = ?");
-        $stmt->bind_param("ii", $task_id, $user_id);
-        $stmt->execute();
-        $num_affected_rows = $stmt->affected_rows;
-        $stmt->close();
-        return $num_affected_rows > 0;
-    }
- 
-    /* ------------- `user_tasks` table method ------------------ */
- 
-    /**
-     * Function to assign a task to user
-     * @param String $user_id id of the user
-     * @param String $task_id id of the task
-     */
-    public function createUserTask($user_id, $task_id) {
-        $stmt = $this->conn->prepare("INSERT INTO user_tasks(user_id, task_id) values(?, ?)");
-        $stmt->bind_param("ii", $user_id, $task_id);
-        $result = $stmt->execute();
-        $stmt->close();
-        return $result;
-    }
  
 }
  

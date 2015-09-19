@@ -1,0 +1,62 @@
+CREATE DATABASE IF NOT EXISTS `event_sched`;
+USE `event_sched`;
+
+CREATE TABLE IF NOT EXISTS `users` (
+	`id` INT(11) NOT NULL AUTO_INCREMENT,
+	`name` VARCHAR(100) NOT NULL,
+	`email` VARCHAR(100) NOT NULL,
+	`gender` CHAR(1) NOT NULL DEFAULT 'M',
+	`password_hash` TEXT NOT NULL,
+	`key` VARCHAR(32) NOT NULL,
+	PRIMARY KEY (`id`),
+	UNIQUE KEY (`email`)
+);
+
+CREATE TABLE IF NOT EXISTS `events` (
+	`id` INT(11) NOT NULL AUTO_INCREMENT,
+	`owner_id` INT(11) NOT NULL,
+	`event` VARCHAR(250) NOT NULL,
+	`details` TEXT,
+	`location` VARCHAR(250),
+	`start_time` INT(11) NOT NULL,
+	`duration` INT(10) NOT NULL,
+	`last_update_time` INT(11),
+	PRIMARY KEY (`id`),
+	FOREIGN KEY (`owner_id`) REFERENCES users(`id`) 
+		ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS `user_events` (
+	`user_id` INT(11) NOT NULL,
+	`event_id` INT(11) NOT NULL,
+	`is_delivered` TINYINT(1) NOT NULL DEFAULT 0,
+	`delivery_time` INT(11) DEFAULT NULL,
+	PRIMARY KEY (`user_id`, `event_id`),
+	FOREIGN KEY (`user_id`) REFERENCES users(`id`)
+		ON DELETE CASCADE ON UPDATE CASCADE,
+	FOREIGN KEY (`event_id`) REFERENCES events(`id`)
+		ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS `has_privilege` (
+	`user_id` INT(11) NOT NULL,
+	`privuser_id` INT(11) NOT NULL,
+	PRIMARY KEY (`user_id`, `privuser_id`),
+	FOREIGN KEY (`user_id`) REFERENCES users(`id`)
+		ON DELETE CASCADE ON UPDATE CASCADE,
+	FOREIGN KEY (`privuser_id`) REFERENCES users(`id`)
+		ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS `comments` (
+	`id` INT(11) NOT NULL,
+	`author_id` INT(11) NOT NULL,
+	`event_id` INT(11) NOT NULL,
+	`content` TEXT NOT NULL,
+	`created_at` INT(11) NOT NULL,
+	PRIMARY kEY (`id`),
+	FOREIGN KEY (`author_id`) REFERENCES users(`id`) 
+		ON DELETE CASCADE ON UPDATE CASCADE,
+	FOREIGN KEY (`event_id`) REFERENCES events(`id`)
+		ON DELETE CASCADE ON UPDATE CASCADE
+);

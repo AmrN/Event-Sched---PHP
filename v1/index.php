@@ -4,6 +4,7 @@ require_once '../include/DbHandler.php';
 require_once '../include/PassHash.php';
 require_once '../include/TimeHandler.php';
 require '../libs/Slim/Slim.php';
+
  
 \Slim\Slim::registerAutoloader();
  
@@ -30,10 +31,10 @@ function verifyRequiredParams($required_fields) {
 //    $request_params = array();
     $request_params = $_REQUEST;
     // Handling PUT request params
-    if ($_SERVER['REQUEST_METHOD'] == 'PUT') {
-        $app = \Slim\Slim::getInstance();
-        parse_str($app->request()->getBody(), $request_params);
-    }
+//    if ($_SERVER['REQUEST_METHOD'] == 'PUT') {
+//        $app = \Slim\Slim::getInstance();
+//        parse_str($app->request()->getBody(), $request_params);
+//    }
     foreach ($required_fields as $field) {
         if (!isset($request_params[$field]) || strlen(trim($request_params[$field])) <= 0) {
             $error = true;
@@ -200,37 +201,6 @@ function authenticate(\Slim\Route $route) {
     }
 }
 
-/**
- * Creating new task in db
- * method POST
- * params - name
- * url - /tasks/
- */
-$app->post('/tasks', 'authenticate', function() use ($app) {
-            // check for required params
-            verifyRequiredParams(array('task'));
- 
-            $response = array();
-            $task = $app->request->post('task');
- 
-            global $user_id;
-            $db = new DbHandler();
- 
-            // creating new task
-            $task_id = $db->createTask($user_id, $task);
- 
-            if ($task_id != NULL) {
-                $response["error"] = false;
-                $response["message"] = "Task created successfully";
-                $response["task_id"] = $task_id;
-            } else {
-                $response["error"] = true;
-                $response["message"] = "Failed to create task. Please try again";
-            }
-            echoResponse(201, $response);
-        });
-        
-
         
         
 /**
@@ -291,34 +261,6 @@ $app->post('/events', 'authenticate', function() use($app) {
     echoResponse($response_code, $response);
     });
         
-/**
- * Listing all tasks of particual user
- * method GET
- * url /tasks         
- */
-$app->get('/tasks', 'authenticate', function() {
-            global $user_id;
-            $response = array();
-            $db = new DbHandler();
- 
-            // fetching all user tasks
-            $result = $db->getAllUserTasks($user_id);
- 
-            $response["error"] = false;
-            $response["tasks"] = array();
- 
-            // looping through result and preparing tasks array
-            while ($task = $result->fetch_assoc()) {
-                $tmp = array();
-                $tmp["id"] = $task["id"];
-                $tmp["task"] = $task["task"];
-                $tmp["status"] = $task["status"];
-                $tmp["createdAt"] = $task["created_at"];
-                array_push($response["tasks"], $tmp);
-            }
- 
-            echoResponse(200, $response);
-        });
         
 /**
  * Listing all events of particual user
@@ -442,12 +384,12 @@ $app->post('/comments', 'authenticate', function() use($app) {
 /**
  * List free times for given users
  * method GET
- * params - members, date_start, date_end, time_start, time_end, duration
+ * params - [members], date_start, date_end, time_start, time_end, duration
  * url /freetimes   
  */
         
  $app->get('/freetimes', 'authenticate', function() use($app) {
-     verifyRequiredParams(array('members', 'date_start', 'date_end',
+     verifyRequiredParams(array('date_start', 'date_end',
          'time_start', 'time_end', 'duration'));
      
      global $user_id;
@@ -455,13 +397,19 @@ $app->post('/comments', 'authenticate', function() use($app) {
      $response = array();
      $db = new DbHandler();
      
-     $members = explode(',', $app->request->get('members'));
+     $members = array();
      $date_start = $app->request->get('date_start');
      $date_end = $app->request->get('date_end');
      $time_start = $app->request->get('time_start');
      $time_end = $app->request->get('time_end');
      $duration = $app->request->get('duration');
      
+     // optional members param
+     if (!IsNullOrEmptyString($app->request->get('members'))) {
+        $members = explode(',', $app->request->get('members')); 
+     }
+     
+    
 
      if (($key = array_search($user_id, $members)) !== false) {
        unset($members[$key]);
@@ -496,88 +444,8 @@ $app->post('/comments', 'authenticate', function() use($app) {
      
     });
         
-/**
- * Listing single task of particual user
- * method GET
- * url /tasks/:id
- * Will return 404 if the task doesn't belongs to user
- */
-$app->get('/tasks/:id', 'authenticate', function($task_id) {
-            global $user_id;
-            $response = array();
-            $db = new DbHandler();
- 
-            // fetch task
-            $result = $db->getTask($task_id, $user_id);
- 
-            if ($result != NULL) {
-                $response["error"] = false;
-                $response["id"] = $result["id"];
-                $response["task"] = $result["task"];
-                $response["status"] = $result["status"];
-                $response["createdAt"] = $result["created_at"];
-                echoResponse(200, $response);
-            } else {
-                $response["error"] = true;
-                $response["message"] = "The requested resource doesn't exists";
-                echoResponse(404, $response);
-            }
-        });
-        
-/**
- * Updating existing task
- * method PUT
- * params task, status
- * url - /tasks/:id
- */
-$app->put('/tasks/:id', 'authenticate', function($task_id) use($app) {
-            // check for required params
-            verifyRequiredParams(array('task', 'status'));
- 
-            global $user_id;           
-            $task = $app->request->put('task');
-            $status = $app->request->put('status');
- 
-            $db = new DbHandler();
-            $response = array();
- 
-            // updating task
-            $result = $db->updateTask($user_id, $task_id, $task, $status);
-            if ($result) {
-                // task updated successfully
-                $response["error"] = false;
-                $response["message"] = "Task updated successfully";
-            } else {
-                // task failed to update
-                $response["error"] = true;
-                $response["message"] = "Task failed to update. Please try again!";
-            }
-            echoResponse(200, $response);
-        });
-        
-/**
- * Deleting task. Users can delete only their tasks
- * method DELETE
- * url /tasks
- */
-$app->delete('/tasks/:id', 'authenticate', function($task_id) use($app) {
-            global $user_id;
- 
-            $db = new DbHandler();
-            $response = array();
-            $result = $db->deleteTask($user_id, $task_id);
-            if ($result) {
-                // task deleted successfully
-                $response["error"] = false;
-                $response["message"] = "Task deleted succesfully";
-            } else {
-                // task failed to delete
-                $response["error"] = true;
-                $response["message"] = "Task failed to delete. Please try again!";
-            }
-            echoResponse(200, $response);
-        });
         
     
 $app->run();
+
 ?>
